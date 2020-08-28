@@ -90,7 +90,7 @@ class AutoInt(nn.Module):
                 train_label = np.array(train_label).reshape(-1)
                 print('Iteration %d, train auc = %.4f' % (epoch, roc_auc_score(train_label, train_pred)))
                 test_auc = self.eval_result(loader_val, model, epoch)
-                torch.save(self.state_dict(), version + '/two_tower_' + str(epoch) + '-th.model')
+                torch.save(self.state_dict(), 'auto_int_' + str(epoch) + '-th.model')
                 print('spend {} second'.format(time.time() - start_time))
                 if early_stop > 0:
                     if test_auc >= max_auc:

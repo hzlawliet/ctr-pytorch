@@ -28,7 +28,7 @@ class AutoInt(nn.Module):
         super(AutoInt, self).__init__()
         self.embed = torch.nn.Embedding(one_hot_fea_len + 1, embedding_size, padding_idx=one_hot_fea_len)
         self.dense_embed = DenseEmbedding(dense_fea_len, embedding_size)
-        self.funds_embed = torch.nn.Embedding(2, embedding_size)
+        self.channel_embed = torch.nn.Embedding(2, embedding_size)
         self.interaction = Interaction(2, embedding_size, embedding_size, embedding_size)
 
         self.mlp = nn.Sequential(
@@ -45,15 +45,15 @@ class AutoInt(nn.Module):
 
         self.loss = nn.BCELoss()
 
-    def forward(self, continous_fea, cate_fea_index, funds_id):
+    def forward(self, continous_fea, cate_fea_index, channel):
         deep = self.dense_embed(continous_fea)
 
         wide = self.embed(cate_fea_index)
 
-        q = self.funds_embed(funds_id)
+        q = self.channel_embed(channel)
 
         concat = torch.cat([deep, wide, q], dim=1)
-        x = self.interaction(concat).view(funds_id.shape[0], -1)
+        x = self.interaction(concat).view(channel.shape[0], -1)
         x = self.mlp(x)
 
         return self.out(self.dropout(x))
@@ -73,8 +73,8 @@ class AutoInt(nn.Module):
             train_pred = []
             train_label = []
             optimizer = self.lr_update(epoch, warm_up_step, optimizer, lr)
-            for t, (x_dense, x_cat, x_funds, y) in enumerate(loader_train):
-                pred = model(x_dense, x_cat, x_funds)
+            for t, (x_dense, x_cat, x_channel, y) in enumerate(loader_train):
+                pred = model(x_dense, x_cat, x_channel)
                 loss = criterion(pred, y)
                 optimizer.zero_grad()
                 loss.backward()
@@ -107,8 +107,8 @@ class AutoInt(nn.Module):
         test_pred = []
         test_label = []
         with torch.no_grad():
-            for t, (x_dense, x_cat, x_funds, y) in enumerate(loader):
-                pred = model(x_dense, x_cat, x_funds)
+            for t, (x_dense, x_cat, x_channel, y) in enumerate(loader):
+                pred = model(x_dense, x_cat, x_channel)
                 test_pred += pred.data.numpy().reshape(-1).tolist()
                 test_label += y.data.numpy().reshape(-1).tolist()
             #             pred = result.numpy().reshape(-1)
@@ -138,14 +138,14 @@ def train_model(df_train, df_test):
     train_tensor_data = TensorDataset(
         torch.from_numpy(df_train[dense_fea].values).float(),
         torch.from_numpy(df_train[cat_fea].values).long(),
-        torch.from_numpy(df_train['funds'].values).long(),
+        torch.from_numpy(df_train['channel'].values).long(),
         torch.from_numpy(df_train['label'].values).float(),
     )
 
     test_tensor_data = TensorDataset(
         torch.from_numpy(df_test[dense_fea].values).float(),
         torch.from_numpy(df_test[cat_fea].values).long(),
-        torch.from_numpy(df_test['funds'].values).long(),
+        torch.from_numpy(df_test['channel'].values).long(),
         torch.from_numpy(df_test['label'].values).float(),
     )
 
